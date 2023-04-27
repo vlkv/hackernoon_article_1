@@ -1,0 +1,13 @@
+karmem api @packed(true) @golang.package(`v1`);
+
+struct DataRequest inline {
+    S []char;
+    F64s []float64;
+    I32 int32;
+}
+
+struct DataResponse inline {
+    S []char;
+    F64s []float64;
+    I32 int32;
+}
