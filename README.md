@@ -1,36 +1,49 @@
 # Passing and returning arrays to and from Go WebAssembly module
 
-## INTRO
-WebAssembly is cool. It has a lot of cool features, it is multiplatform, it can work in browser and on servers, etc.
+[WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, it
+can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is rather young, some basic
+tasks are not as easy as they expected to be especially for the newcomers. One of such surprisingly difficult tasks is
+passing and returning to and from WebAssembley module any complex objects, because it is well known, that Wasm supports
+only primitive datatypes (int32, int64, float32 and float64). In fact, passing any complex objects like arrays, strings,
+structs with named fields all could be reduced to one single problem of passing arrays of bytes and applying some
+serialization/deserialization algorithm to the data.
 
-But! WebAssembly standard is a work in progress. At the moment only primitive datatypes (ints and floats) are supported.
-In real life usecases we need to pass in and out to WASM module more complex types: strings, structured objects etc. The
-general approach may seem to be quite simple - allocate memory, pass pointer to that memory + buffer size to WASM
-module, return similar pair from WASM module and don't forget to correctly free the previously allocated memory. But
-when it comes to writing the exact code that correctly works and could be safely deployed to production... things may
-become a little bit difficult.
+The general approach to accomplish this is intuitively quite simple - allocate memory, pass pointer to that memory +
+buffer size to Wasm module, return similar pair from Wasm module and don't forget to correctly free all previously
+allocated memory. When we start thinking about memory management in WebAssembly, it is very dependent on what language
+[^1] was used for subsequent compilation to Wasm instructions. Some languages have garbage collector (GC) "out of the
+box", some have not. It is also not a trivial task to choose serialization format and library for interpreting the
+passed bytes. In the end, when it comes to writing the exact code that correctly works and could be safely deployed to
+production... things may become a little bit complicated at least.
 
-## THE PROBLEM THAT WE SOLVE HERE
-Create WASM application which accepts some complex request object and returns some complex response object. We use
-TinyGo to create this WASM app. Then we embed this WASM app into Go application using Wasmtime. The datatypes of request
-and response complex objects could be anything (like any bytes array) but we going to use some library which provides
-schema for the data. We'd love to use Protobuf but it doesn't work in TinyGo+WASM, so we found and use Karmem library
-for the same purpose. In the end we should have a nice almost-ready-to-go-to-prod code example which illustrates all the
-above.
+In this article we will walk through the solution of the task described above. We cannot cover all the diversity of
+languages and Wasm runtimes, so focus on just a few. We will write our guest application in Go, compile it to Wasm with
+[TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
+[Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be written also
+in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library.
+
+[^1] If we'd write our guest application in Rust, then the whole task could be solved in a much simpler manner, using
+their [wasm-bindgen](https://rustwasm.github.io/docs/wasm-bindgen/) library.
+
+[^2] JSON format could be used too, but it should be noted that Go's standard `encoding/json` library doesn't work in
+TinyGo, because TinyGo does not support reflection. People who need to use JSON without schema in Wasm usually go with
+[gson](https://github.com/tidwall/gjson) library. [tinyjson](https://github.com/CosmWasm/tinyjson) seems to be a good
+alternative for cases where the schema of all JSON messages is known. For this article I was looking for something like [Protobuf](https://protobuf.dev) but unfortunately, their Go's implementation does not work with TinyGo. Karmem is very close to Protobuf conceptually, that is why I decided to use it.
+
 
 ## MOTIVATION
-The information in official WASM resources are fuzzy and obscure (TODO: enumerate them). There are some recipies for
+The information in official Wasm resources are fuzzy and obscure (TODO: enumerate them). There are some recipies for
 Rust (e.g. bindgen) or JavaScript, but not all of them are applicable to Go. Or somewhere we may find an example of how
-to pass into the WASM module string (or array) data but there is no good examples about how to return similar string out
-from WASM. Or, there are some examples that illustrate the principles but have errors in memory management which makes
+to pass into the Wasm module string (or array) data but there is no good examples about how to return similar string out
+from Wasm. Or, there are some examples that illustrate the principles but have errors in memory management which makes
 such an examples useless and not production ready. Also, most of the examples focus on passing in/out strings, which is
 cool. But in real life usecases we usually need something like string+JSON, or Protobuf or Flatbuffers or similar thing.
-The problem with those libraries is that not much of them work in TinyGo/WASM, so finding a good practical solution
+The problem with those libraries is that not much of them work in TinyGo/Wasm, so finding a good practical solution
 could really become a huge problem.
 
 ## TERMINOLOGY (git repo layout?)
-* host - Go application which runs guest application as WASM embedded process using Wasmtime VM runtime.
-* guest - Go application which is compiled to WASM binary with TinyGo. It exports one function `ProcessRequest` which
+* host - Go application which runs guest application as Wasm embedded process using Wasmtime VM runtime.
+* guest - Go application which is compiled to Wasm binary with TinyGo. It exports one function `ProcessRequest` which
   accepts an instance of request and returns an instance of response.
 * api - contains api.km file which is a Karmem schema for request and response types of `ProcessRequest` guest's
   function.
@@ -51,8 +64,8 @@ could really become a huge problem.
   is why, instead, we should on the guest side call `Malloc` to allocate additional byte array and copy all the data
   there. Then it would be safe to return to the host the address of that second array and it's length. But this is not
   the end of the story, we have two issues here:
-  - If we return a tuple of two integers from `ProcessRequest` then, after compilation to WASM the signature looks very
-    weird. Obviously this is some kind of a mechanism which TinyGo/WASM uses to return tuples. But I could not find out
+  - If we return a tuple of two integers from `ProcessRequest` then, after compilation to Wasm the signature looks very
+    weird. Obviously this is some kind of a mechanism which TinyGo/Wasm uses to return tuples. But I could not find out
     how to properly use that mechanism. So, instead of returning two int32 numbers, we return single int64 with
     32 higher bits containing the address of the resulting byte array and 32 lower bits - containing the length of that
     array
@@ -70,11 +83,11 @@ could really become a huge problem.
 
 ### Guest's API with Karmem
 
-### Pass the RequestData into WASM
+### Pass the RequestData into Wasm
 
 ### Deserialize and process the DataRequest
 
-### Pass the ResponseData out from WASM
+### Pass the ResponseData out from Wasm
 
 ## NOTES ABOUT HOW TO RUN THE EXAMPLE
 See the complete sources in my GitHub repo. Install TinyGo, Go and make. Run `make` in the repo root, this should build
