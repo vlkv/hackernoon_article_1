@@ -4,30 +4,31 @@ import (
 	"unsafe"
 )
 
-// Custom mem functions are needed because tinygo
-// promises nothing about stability of exported `malloc`` and `free`.
-// More about mem management: https://wazero.io/languages/tinygo/#memory
+// TinyGo adds a pair of functions `malloc` and `free` to wasm module automatically, but stil
+// we need custom mem functions because
+// 1) TinyGo promises nothing about stability of exported `malloc` and `free`.
+// 2) We have to call Malloc for storing the result somehow, it is unclear how to call standard `malloc`.
 
-var allocatedMemory = map[uintptr][]byte{}
-
-func ptrToBytes(ptr uintptr) []byte {
-	return allocatedMemory[ptr]
-}
+var allocatedBytes = map[uintptr][]byte{}
 
 //go:export Malloc
 func Malloc(size uint32) uintptr {
 	buf := make([]byte, size)
 	ptr := &buf[0]
 	unsafePtr := uintptr(unsafe.Pointer(ptr))
-	allocatedMemory[unsafePtr] = buf
+	allocatedBytes[unsafePtr] = buf
 	return unsafePtr
 }
 
 //go:export Free
 func Free(ptr uintptr) {
-	delete(allocatedMemory, ptr)
+	delete(allocatedBytes, ptr)
 }
 
-func joinPtrSize(ptr uintptr, size uint32) (ptrSize uint64) {
+func getBytes(ptr uintptr) []byte {
+	return allocatedBytes[ptr]
+}
+
+func packPtrAndSize(ptr uintptr, size uint32) (ptrSize uint64) {
 	return uint64(ptr)<<uint64(32) | uint64(size)
 }

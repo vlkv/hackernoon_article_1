@@ -52,7 +52,7 @@ func main() {
 	int32PtrReq := ptrReq.(int32)
 	copy(
 		mem.UnsafeData(store)[int32PtrReq:int32PtrReq+reqBytesLen],
-		reqBytes, // NOTE: If we write wrong bytes here, karmem (most likely) will not panic, but deserialize into trash
+		reqBytes,
 	)
 
 	respPtrLen, err := processRequest.Call(store, int32PtrReq, reqBytesLen)
@@ -69,7 +69,7 @@ func main() {
 
 	fmt.Printf("NumbersGreaterK=%v\n", resp.NumbersGreaterK)
 
-	free.Call(store, respPtr) // This memory was allocated on the guest side. Host should free it after a while
+	free.Call(store, respPtr) // This memory was allocated on the guest side, we free it on the host side now
 
 	runtime.KeepAlive(mem)
 }

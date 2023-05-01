@@ -6,12 +6,14 @@ import (
 )
 
 func main() {
-	// Some useful initialization could be added here, like logging
+	// Some useful initialization may be added here, e.g. configuration of logging
 }
 
+// TODO: reqLen is an unused param, remove it maybe?
+//
 //go:export ProcessRequest
 func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
-	reader := karmem.NewReader(ptrToBytes(reqPtr))
+	reader := karmem.NewReader(getBytes(reqPtr))
 	req := new(v1.DataRequest)
 	req.ReadAsRoot(reader)
 
@@ -24,9 +26,9 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 	respBytes := writer.Bytes()
 	respBytesLen := uint32(len(respBytes))
 	ptrResp := Malloc(respBytesLen)
-	respBuf := ptrToBytes(ptrResp)
+	respBuf := getBytes(ptrResp)
 	copy(respBuf, respBytes)
-	return joinPtrSize(ptrResp, respBytesLen) // NOTE: That host should free this memory in the end
+	return packPtrAndSize(ptrResp, respBytesLen) // NOTE: That host should free this memory in the end
 }
 
 func doProcessRequest(req *v1.DataRequest) *v1.DataResponse {
