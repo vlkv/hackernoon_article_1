@@ -5,14 +5,13 @@ import (
 )
 
 // Custom mem functions are needed because tinygo
-// promises nothing about stability exported malloc and free.
+// promises nothing about stability of exported `malloc`` and `free`.
 // More about mem management: https://wazero.io/languages/tinygo/#memory
 
-var alivePointers = map[uintptr][]byte{}
+var allocatedMemory = map[uintptr][]byte{}
 
-func ptrToBytes(ptr uintptr, size uint32) []byte {
-	// size is ignored as the underlying map is pre-allocated.
-	return alivePointers[ptr]
+func ptrToBytes(ptr uintptr) []byte {
+	return allocatedMemory[ptr]
 }
 
 //go:export Malloc
@@ -20,13 +19,13 @@ func Malloc(size uint32) uintptr {
 	buf := make([]byte, size)
 	ptr := &buf[0]
 	unsafePtr := uintptr(unsafe.Pointer(ptr))
-	alivePointers[unsafePtr] = buf
+	allocatedMemory[unsafePtr] = buf
 	return unsafePtr
 }
 
 //go:export Free
 func Free(ptr uintptr) {
-	delete(alivePointers, ptr)
+	delete(allocatedMemory, ptr)
 }
 
 func joinPtrSize(ptr uintptr, size uint32) (ptrSize uint64) {

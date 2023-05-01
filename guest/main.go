@@ -11,7 +11,7 @@ func main() {
 
 //go:export ProcessRequest
 func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
-	reader := karmem.NewReader(ptrToBytes(reqPtr, reqLen))
+	reader := karmem.NewReader(ptrToBytes(reqPtr))
 	req := new(v1.DataRequest)
 	req.ReadAsRoot(reader)
 
@@ -24,7 +24,7 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 	respBytes := writer.Bytes()
 	respBytesLen := uint32(len(respBytes))
 	ptrResp := Malloc(respBytesLen)
-	respBuf := ptrToBytes(ptrResp, respBytesLen)
+	respBuf := ptrToBytes(ptrResp)
 	copy(respBuf, respBytes)
 	return joinPtrSize(ptrResp, respBytesLen) // NOTE: That host should free this memory in the end
 }
