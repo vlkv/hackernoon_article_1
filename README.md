@@ -3,7 +3,7 @@
 [WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, it
 can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is rather young, some basic
 tasks are not as easy as they expected to be especially for the newcomers. One of such surprisingly difficult tasks is
-passing and returning to and from WebAssembley module any complex objects, because it is well known, that Wasm supports
+passing and returning to and from WebAssembly module any complex objects, because it is well known, that Wasm supports
 only primitive datatypes (int32, int64, float32 and float64). In fact, passing any complex objects like arrays, strings,
 structs with named fields all could be reduced to one single problem of passing arrays of bytes and applying some
 serialization/deserialization algorithm to the data.
@@ -11,7 +11,7 @@ serialization/deserialization algorithm to the data.
 The general approach to accomplish this is intuitively quite simple - allocate some memory on the guest side (the Wasm
 module side) and copy request's data from the host to that memory buffer. Then pass the pointer to that memory + buffer
 size to the guest, process the data on the guest side according to the guest's business logic and produce some result.
-Then allocate some memory for the result, copy result's bytes into that buffer and return similar pair (poiner + buffer
+Then allocate some memory for the result, copy result's bytes into that buffer and return similar pair (pointer + buffer
 size) from the Wasm module to the host. Finally don't forget to correctly free all previously allocated memory buffers.
 When we start thinking about memory management in WebAssembly, it is very dependent on what language [^1] was used for
 subsequent compilation to Wasm instructions. Some languages have garbage collector (GC) "out of the box", some have not.
@@ -28,8 +28,8 @@ some examples that illustrate the principles but miss the proper memory manageme
 not production ready.
 
 In this article we will walk through the solution of the task described above. We cannot cover all the diversity of
-languages and Wasm runtimes, so focus on just a few. We will write our guest application in Go, compile it to Wasm with
-[TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
+languages and Wasm runtimes, so focus just on the following. We will write our guest application in Go, compile it to
+Wasm with [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
 [Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be written also
 in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library.
 
@@ -146,7 +146,7 @@ instructions with TinyGo compiler. The exact command will be presented a little 
 `free` functions to the exports list (they could be observed if you inspect the Wasm module with some corresponding
 tool, like [wasmer inspect](https://docs.wasmer.io/ecosystem/wasmer/usage#wasmer-inspect)). We do not use them by two
 reasons: 1) TinyGo promises nothing about stability of exported `malloc` and `free` 2) we have to call `Malloc` for
-storing the result somehow from the guest side, it is unclear how to call standard `malloc` but very straightforward
+storing the result somehow from the guest side, it is unclear how to call standard `malloc` this way but very straightforward
 with our own custom `Malloc`.
 
 
@@ -162,7 +162,7 @@ if err != nil {
 }
 ```
 
-The `newWasmInstance` does all the initialization needed according to the Wasmtime [Getting started documentation](https://docs.wasmtime.dev/lang-go.html#getting-started-and-simple-example) and returns references to the Wasm VM instance as well as it's store and linear memory.
+The `newWasmInstance` does all the initialization needed according to the Wasmtime [Getting started documentation](https://docs.wasmtime.dev/lang-go.html#getting-started-and-simple-example) and returns references to the Wasm VM instance as well as to it's store and linear memory.
 
 Next, we get references to the three exported guest function objects that we will need:
 ```go
@@ -189,7 +189,7 @@ buffer and it's size where serialized bytes of `DataResponse` are copied to. The
 instead of a tuple of two 32-bit integers is that it is super unclear how TinyGo treats data when function return
 complex tuple-like result. It was not documented at the moment of the writing this article (or simply I could not find
 it). So this should be considered as a workaround hack (that works wery well) to return a pair of 32-bit integers from a
-function that is exported from Wasm module.
+function that is exported from a Wasm module.
 
 ```go
 // Here `reqBytes` is a []byte array with the DataRequest serialized bytes
@@ -293,7 +293,7 @@ func packPtrAndSize(ptr uintptr, size uint32) (ptrAndSize uint64) {
 ```
 
 It takes a 64-bit integer and writes the 32-bits of the `ptr` variable to the high bits of it. It also writes the
-32-bits of the `size` variable to the lower bits of the 64-bit integer. Then returns the 64-bit integer as a result.
+32-bits of the `size` variable to the low bits of the 64-bit integer. Then returns the 64-bit integer as a result.
 
 One very important thing in this part of the article is that the memory buffer that was **allocated by the guest** for
 the `DataResponse` result should be **deallocated by the host** at some point in time when it will be not needed
@@ -340,7 +340,7 @@ func unpackPtrAndSize(ptrSize uint64) (ptr uintptr, size uint32) {
 Tnen, we call Karmem to deserialize the bytes in the resulting buffer into the `DataResponse` struct instance `resp` and
 use the data from there (in our example this usage is a simple printing of the `resp.NumbersGreaterK` to the standard
 output). After we used the resulting data we call `Free` on the `respPtr` because it is the host's responsibility to
-free that memory buffer which was allocated by the guest code on the guest side. End of the story!
+free that memory buffer which was allocated by the guest code on the guest side. End of story!
 
 
 ## How to run the complete example
@@ -384,8 +384,8 @@ make[1]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_artic
 ```
 
 As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` and integer `K=42` and received back array
-`NumbersGreaterK=[43 56]` with two integers which are larger than the given `K` in the input `Numners` array. This is
-exactly what we wanted from the guest to do!
+`NumbersGreaterK=[43 56]` with two integers which are larger than the given `K` in the input `Numbers` array. This is
+exactly what we wanted our guest application to do!
 
 ## Conclusion
 
