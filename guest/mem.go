@@ -15,8 +15,8 @@ func ptrToBytes(ptr uintptr, size uint32) []byte {
 	return alivePointers[ptr]
 }
 
-//go:export MyMalloc
-func MyMalloc(size uint32) uintptr {
+//go:export Malloc
+func Malloc(size uint32) uintptr {
 	buf := make([]byte, size)
 	ptr := &buf[0]
 	unsafePtr := uintptr(unsafe.Pointer(ptr))
@@ -24,8 +24,8 @@ func MyMalloc(size uint32) uintptr {
 	return unsafePtr
 }
 
-//go:export MyFree
-func MyFree(ptr uintptr) {
+//go:export Free
+func Free(ptr uintptr) {
 	delete(alivePointers, ptr)
 }
 

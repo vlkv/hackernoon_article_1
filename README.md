@@ -2,7 +2,7 @@
 WebAssembly is cool. It has a lot of cool features, it is multiplatform, it can work in browser and on servers, etc.
 
 But! WebAssembly standard is a work in progress. At the moment only primitive datatypes (ints and floats) are supported.
-But in real life usecases we need to pass in and out to WASM module more complex types: strings, structured objects etc.
+In real life usecases we need to pass in and out to WASM module more complex types: strings, structured objects etc.
 The general approach may seem to be quite simple - allocate memory, pass pointer to that memory + buffer size to WASM
 module, return similar pair from WASM module and don't forget to correctly free the previously allocated memory. But when it comes to
 writing the exact code that correctly works and could be safely deployed to production... things may become a little bit

@@ -23,8 +23,8 @@ func main() {
 	}
 
 	main := instance.GetFunc(store, "_start")
-	malloc := instance.GetFunc(store, "MyMalloc")
-	free := instance.GetFunc(store, "MyFree")
+	malloc := instance.GetFunc(store, "Malloc")
+	free := instance.GetFunc(store, "Free")
 	processRequest := instance.GetFunc(store, "ProcessRequest")
 
 	_, err = main.Call(store)
