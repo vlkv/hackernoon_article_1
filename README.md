@@ -1,12 +1,12 @@
 # Passing and returning arrays to and from Go WebAssembly module
 
-[WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, it
-can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is rather young, some basic
-tasks are not as easy as they expected to be especially for the newcomers. One of such surprisingly difficult tasks is
-passing and returning to and from WebAssembly module any complex objects, because it is well known, that Wasm supports
-only primitive datatypes (int32, int64, float32 and float64). In fact, passing any complex objects like arrays, strings,
-structs with named fields all could be reduced to one single problem of passing arrays of bytes and applying some
-serialization/deserialization algorithm to the data.
+[WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, has
+near native perfomance, it can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is
+rather young, some basic tasks are not as easy as they expected to be especially for the newcomers. One of such
+surprisingly difficult tasks is passing and returning to and from WebAssembly module any complex objects, because it is
+well known, that Wasm supports only primitive datatypes (int32, int64, float32 and float64). In fact, passing any
+complex objects like arrays, strings, structs with named fields all could be reduced to one single problem of passing
+arrays of bytes and applying some serialization/deserialization algorithm to the data.
 
 The general approach to accomplish this is intuitively quite simple - allocate some memory on the guest side (the Wasm
 module side) and copy request's data from the host to that memory buffer. Then pass the pointer to that memory + buffer
@@ -344,7 +344,7 @@ hackernoon_article_1$ make
 ```
 
 Which should do the following:
-- generate the Karmem serialization/deserialization code from the api.km definitions
+- generate the Karmem serialization/deserialization code from the [api.km](https://github.com/vlkv/hackernoon_article_1/blob/master/api/api.km) definitions
 - call the tinygo compiler and build the guest.wasm Wasm module
 - run the host Go application
 
