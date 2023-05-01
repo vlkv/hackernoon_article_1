@@ -12,14 +12,9 @@ import (
 )
 
 func main() {
-	store, instance, err := newWasmInstance("../guest/guest.wasm")
+	instance, store, mem, err := newWasmInstance("../guest/guest.wasm")
 	if err != nil {
 		panic(err)
-	}
-
-	var mem *wasmtime.Memory
-	if mem = instance.GetExport(store, "memory").Memory(); mem == nil {
-		panic("couln't import memory")
 	}
 
 	main := instance.GetFunc(store, "_start")
@@ -80,23 +75,23 @@ func splitPtrSize(ptrSize uint64) (ptr uintptr, size uint32) {
 	return
 }
 
-func newWasmInstance(wasmBinaryPath string) (*wasmtime.Store, *wasmtime.Instance, error) {
+func newWasmInstance(wasmBinaryPath string) (*wasmtime.Instance, *wasmtime.Store, *wasmtime.Memory, error) {
 	engine := wasmtime.NewEngine()
 
 	wasmBytes, err := readWasmBytes(engine, wasmBinaryPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	module, err := wasmtime.NewModule(engine, wasmBytes)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	linker := wasmtime.NewLinker(engine)
 	err = linker.DefineWasi()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	store := wasmtime.NewStore(engine)
@@ -109,9 +104,15 @@ func newWasmInstance(wasmBinaryPath string) (*wasmtime.Store, *wasmtime.Instance
 
 	instance, err := linker.Instantiate(store, module)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return store, instance, nil
+
+	var mem *wasmtime.Memory
+	if mem = instance.GetExport(store, "memory").Memory(); mem == nil {
+		panic("couldn't import memory")
+	}
+
+	return instance, store, mem, nil
 }
 
 func readWasmBytes(engine *wasmtime.Engine, path string) ([]byte, error) {
