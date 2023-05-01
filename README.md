@@ -33,13 +33,6 @@ Wasm with [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and emb
 [Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be written also
 in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library.
 
-[^1] If we'd write our guest application in Rust, then the whole task could be solved in a much simpler manner, using
-their [wasm-bindgen](https://rustwasm.github.io/docs/wasm-bindgen/) library.
-
-[^2] JSON format could be used too, but it should be noted that Go's standard `encoding/json` library doesn't work in
-TinyGo, because TinyGo does not support reflection. People who need to use JSON without schema in Wasm usually go with
-[gson](https://github.com/tidwall/gjson) library. [tinyjson](https://github.com/CosmWasm/tinyjson) seems to be a good
-alternative for cases where the schema of all JSON messages is known. For this article I was looking for something like [Protobuf](https://protobuf.dev) but unfortunately, their Go's implementation does not work with TinyGo. Karmem is very close to Protobuf conceptually, that is why I decided to use it.
 
 ## API of the guest application
 Our guest application will accept complex objects of `DataRequest` type, which in Karmem language could be described as
@@ -142,13 +135,6 @@ memory management module of the guest application.
 All this memory management code along with the rest of the guest application code will be compiled into Wasm
 instructions with TinyGo compiler. The exact command will be presented a little bit later in this article.
 
-[^3] When TinyGo compiles Go sources into Wasm module it automatically adds some own implementations of `malloc` and
-`free` functions to the exports list (they could be observed if you inspect the Wasm module with some corresponding
-tool, like [wasmer inspect](https://docs.wasmer.io/ecosystem/wasmer/usage#wasmer-inspect)). We do not use them by two
-reasons: 1) TinyGo promises nothing about stability of exported `malloc` and `free` 2) we have to call `Malloc` for
-storing the result somehow from the guest side, it is unclear how to call standard `malloc` this way but very straightforward
-with our own custom `Malloc`.
-
 
 ## Prepare request and pass it from host to guest
 
@@ -236,6 +222,7 @@ does not allow this.
 Here is the full source code of the host's
 [main.go](https://github.com/vlkv/hackernoon_article_1/blob/master/host/main.go) module.
 
+
 ## The rest of the guest application implementation
 
 So far so good, we have sent the address to the `DataRequest` serialized bytes and number of those bytes to the guest.
@@ -309,6 +296,7 @@ hackernoon_article_1/guest$ tinygo build -target=wasi -o guest.wasm .
 ```
 
 This should produce a `hackernoon_article_1/guest/guest.wasm` binary file which is used by the host application.
+
 
 ## Accept the result on the host side
 
@@ -387,8 +375,27 @@ As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` an
 `NumbersGreaterK=[43 56]` with two integers which are larger than the given `K` in the input `Numbers` array. This is
 exactly what we wanted our guest application to do!
 
+
 ## Conclusion
 
 This article proposes a solution to one common problem which WebAssembly's software engineers face very often: passing
 non-primitive datatypes to and from Wasm module. WebAssembly has a steep learning curve but it also has a great
 potential as a technology. I hope this article will help somebody in their work or personal project.
+
+
+## Footnotes
+
+[^1] If we'd write our guest application in Rust, then the whole task could be solved in a much simpler manner, using
+their [wasm-bindgen](https://rustwasm.github.io/docs/wasm-bindgen/) library.
+
+[^2] JSON format could be used too, but it should be noted that Go's standard `encoding/json` library doesn't work in
+TinyGo, because TinyGo does not support reflection. People who need to use JSON without schema in Wasm usually go with
+[gson](https://github.com/tidwall/gjson) library. [tinyjson](https://github.com/CosmWasm/tinyjson) seems to be a good
+alternative for cases where the schema of all JSON messages is known. For this article I was looking for something like [Protobuf](https://protobuf.dev) but unfortunately, their Go's implementation does not work with TinyGo. Karmem is very close to Protobuf conceptually, that is why I decided to use it.
+
+[^3] When TinyGo compiles Go sources into Wasm module it automatically adds some own implementations of `malloc` and
+`free` functions to the exports list (they could be observed if you inspect the Wasm module with some corresponding
+tool, like [wasmer inspect](https://docs.wasmer.io/ecosystem/wasmer/usage#wasmer-inspect)). We do not use them by two
+reasons: 1) TinyGo promises nothing about stability of exported `malloc` and `free` 2) we have to call `Malloc` for
+storing the result somehow from the guest side, it is unclear how to call standard `malloc` this way but very straightforward
+with our own custom `Malloc`.
