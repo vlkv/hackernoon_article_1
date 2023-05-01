@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	// TODO: Add some initialization here, like logging
+	// Some useful initialization could be added here, like logging
 }
 
 //go:export ProcessRequest
@@ -30,11 +30,14 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 }
 
 func doProcessRequest(req *v1.DataRequest) *v1.DataResponse {
-	// TODO: Add some more realistic processing here
+	result := make([]int32, 0)
+	for _, number := range req.Numbers {
+		if number > req.K {
+			result = append(result, number)
+		}
+	}
 	resp := v1.DataResponse{
-		S:    req.S + "bar",
-		F64s: []float64{-1, -2, -3, -5},
-		I32:  req.I32 + 1,
+		NumbersGreaterK: result,
 	}
 	return &resp
 }

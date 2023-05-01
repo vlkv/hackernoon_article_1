@@ -7,7 +7,7 @@ import (
 
 var _ unsafe.Pointer
 
-var _Null = make([]byte, 32)
+var _Null = make([]byte, 24)
 var _NullReader = karmem.NewReader(_Null)
 
 type (
@@ -20,9 +20,8 @@ const (
 )
 
 type DataRequest struct {
-	S    string
-	F64s []float64
-	I32  int32
+	Numbers []int32
+	K       int32
 }
 
 func NewDataRequest() DataRequest {
@@ -43,37 +42,27 @@ func (x *DataRequest) WriteAsRoot(writer *karmem.Writer) (offset uint, err error
 
 func (x *DataRequest) Write(writer *karmem.Writer, start uint) (offset uint, err error) {
 	offset = start
-	size := uint(32)
+	size := uint(24)
 	if offset == 0 {
 		offset, err = writer.Alloc(size)
 		if err != nil {
 			return 0, err
 		}
 	}
-	__SSize := uint(1 * len(x.S))
-	__SOffset, err := writer.Alloc(__SSize)
+	__NumbersSize := uint(4 * len(x.Numbers))
+	__NumbersOffset, err := writer.Alloc(__NumbersSize)
 	if err != nil {
 		return 0, err
 	}
-	writer.Write4At(offset+0, uint32(__SOffset))
-	writer.Write4At(offset+0+4, uint32(__SSize))
-	writer.Write4At(offset+0+4+4, 1)
-	__SSlice := [3]uint{*(*uint)(unsafe.Pointer(&x.S)), __SSize, __SSize}
-	writer.WriteAt(__SOffset, *(*[]byte)(unsafe.Pointer(&__SSlice)))
-	__F64sSize := uint(8 * len(x.F64s))
-	__F64sOffset, err := writer.Alloc(__F64sSize)
-	if err != nil {
-		return 0, err
-	}
-	writer.Write4At(offset+12, uint32(__F64sOffset))
-	writer.Write4At(offset+12+4, uint32(__F64sSize))
-	writer.Write4At(offset+12+4+4, 8)
-	__F64sSlice := *(*[3]uint)(unsafe.Pointer(&x.F64s))
-	__F64sSlice[1] = __F64sSize
-	__F64sSlice[2] = __F64sSize
-	writer.WriteAt(__F64sOffset, *(*[]byte)(unsafe.Pointer(&__F64sSlice)))
-	__I32Offset := offset + 24
-	writer.Write4At(__I32Offset, *(*uint32)(unsafe.Pointer(&x.I32)))
+	writer.Write4At(offset+0, uint32(__NumbersOffset))
+	writer.Write4At(offset+0+4, uint32(__NumbersSize))
+	writer.Write4At(offset+0+4+4, 4)
+	__NumbersSlice := *(*[3]uint)(unsafe.Pointer(&x.Numbers))
+	__NumbersSlice[1] = __NumbersSize
+	__NumbersSlice[2] = __NumbersSize
+	writer.WriteAt(__NumbersOffset, *(*[]byte)(unsafe.Pointer(&__NumbersSlice)))
+	__KOffset := offset + 12
+	writer.Write4At(__KOffset, *(*uint32)(unsafe.Pointer(&x.K)))
 
 	return offset, nil
 }
@@ -83,29 +72,21 @@ func (x *DataRequest) ReadAsRoot(reader *karmem.Reader) {
 }
 
 func (x *DataRequest) Read(viewer *DataRequestViewer, reader *karmem.Reader) {
-	__SString := viewer.S(reader)
-	if x.S != __SString {
-		__SStringCopy := make([]byte, len(__SString))
-		copy(__SStringCopy, __SString)
-		x.S = *(*string)(unsafe.Pointer(&__SStringCopy))
+	__NumbersSlice := viewer.Numbers(reader)
+	__NumbersLen := len(__NumbersSlice)
+	if __NumbersLen > cap(x.Numbers) {
+		x.Numbers = append(x.Numbers, make([]int32, __NumbersLen-len(x.Numbers))...)
 	}
-	__F64sSlice := viewer.F64s(reader)
-	__F64sLen := len(__F64sSlice)
-	if __F64sLen > cap(x.F64s) {
-		x.F64s = append(x.F64s, make([]float64, __F64sLen-len(x.F64s))...)
+	if __NumbersLen > len(x.Numbers) {
+		x.Numbers = x.Numbers[:__NumbersLen]
 	}
-	if __F64sLen > len(x.F64s) {
-		x.F64s = x.F64s[:__F64sLen]
-	}
-	copy(x.F64s, __F64sSlice)
-	x.F64s = x.F64s[:__F64sLen]
-	x.I32 = viewer.I32()
+	copy(x.Numbers, __NumbersSlice)
+	x.Numbers = x.Numbers[:__NumbersLen]
+	x.K = viewer.K()
 }
 
 type DataResponse struct {
-	S    string
-	F64s []float64
-	I32  int32
+	NumbersGreaterK []int32
 }
 
 func NewDataResponse() DataResponse {
@@ -126,37 +107,25 @@ func (x *DataResponse) WriteAsRoot(writer *karmem.Writer) (offset uint, err erro
 
 func (x *DataResponse) Write(writer *karmem.Writer, start uint) (offset uint, err error) {
 	offset = start
-	size := uint(32)
+	size := uint(16)
 	if offset == 0 {
 		offset, err = writer.Alloc(size)
 		if err != nil {
 			return 0, err
 		}
 	}
-	__SSize := uint(1 * len(x.S))
-	__SOffset, err := writer.Alloc(__SSize)
+	__NumbersGreaterKSize := uint(4 * len(x.NumbersGreaterK))
+	__NumbersGreaterKOffset, err := writer.Alloc(__NumbersGreaterKSize)
 	if err != nil {
 		return 0, err
 	}
-	writer.Write4At(offset+0, uint32(__SOffset))
-	writer.Write4At(offset+0+4, uint32(__SSize))
-	writer.Write4At(offset+0+4+4, 1)
-	__SSlice := [3]uint{*(*uint)(unsafe.Pointer(&x.S)), __SSize, __SSize}
-	writer.WriteAt(__SOffset, *(*[]byte)(unsafe.Pointer(&__SSlice)))
-	__F64sSize := uint(8 * len(x.F64s))
-	__F64sOffset, err := writer.Alloc(__F64sSize)
-	if err != nil {
-		return 0, err
-	}
-	writer.Write4At(offset+12, uint32(__F64sOffset))
-	writer.Write4At(offset+12+4, uint32(__F64sSize))
-	writer.Write4At(offset+12+4+4, 8)
-	__F64sSlice := *(*[3]uint)(unsafe.Pointer(&x.F64s))
-	__F64sSlice[1] = __F64sSize
-	__F64sSlice[2] = __F64sSize
-	writer.WriteAt(__F64sOffset, *(*[]byte)(unsafe.Pointer(&__F64sSlice)))
-	__I32Offset := offset + 24
-	writer.Write4At(__I32Offset, *(*uint32)(unsafe.Pointer(&x.I32)))
+	writer.Write4At(offset+0, uint32(__NumbersGreaterKOffset))
+	writer.Write4At(offset+0+4, uint32(__NumbersGreaterKSize))
+	writer.Write4At(offset+0+4+4, 4)
+	__NumbersGreaterKSlice := *(*[3]uint)(unsafe.Pointer(&x.NumbersGreaterK))
+	__NumbersGreaterKSlice[1] = __NumbersGreaterKSize
+	__NumbersGreaterKSlice[2] = __NumbersGreaterKSize
+	writer.WriteAt(__NumbersGreaterKOffset, *(*[]byte)(unsafe.Pointer(&__NumbersGreaterKSlice)))
 
 	return offset, nil
 }
@@ -166,31 +135,24 @@ func (x *DataResponse) ReadAsRoot(reader *karmem.Reader) {
 }
 
 func (x *DataResponse) Read(viewer *DataResponseViewer, reader *karmem.Reader) {
-	__SString := viewer.S(reader)
-	if x.S != __SString {
-		__SStringCopy := make([]byte, len(__SString))
-		copy(__SStringCopy, __SString)
-		x.S = *(*string)(unsafe.Pointer(&__SStringCopy))
+	__NumbersGreaterKSlice := viewer.NumbersGreaterK(reader)
+	__NumbersGreaterKLen := len(__NumbersGreaterKSlice)
+	if __NumbersGreaterKLen > cap(x.NumbersGreaterK) {
+		x.NumbersGreaterK = append(x.NumbersGreaterK, make([]int32, __NumbersGreaterKLen-len(x.NumbersGreaterK))...)
 	}
-	__F64sSlice := viewer.F64s(reader)
-	__F64sLen := len(__F64sSlice)
-	if __F64sLen > cap(x.F64s) {
-		x.F64s = append(x.F64s, make([]float64, __F64sLen-len(x.F64s))...)
+	if __NumbersGreaterKLen > len(x.NumbersGreaterK) {
+		x.NumbersGreaterK = x.NumbersGreaterK[:__NumbersGreaterKLen]
 	}
-	if __F64sLen > len(x.F64s) {
-		x.F64s = x.F64s[:__F64sLen]
-	}
-	copy(x.F64s, __F64sSlice)
-	x.F64s = x.F64s[:__F64sLen]
-	x.I32 = viewer.I32()
+	copy(x.NumbersGreaterK, __NumbersGreaterKSlice)
+	x.NumbersGreaterK = x.NumbersGreaterK[:__NumbersGreaterKLen]
 }
 
 type DataRequestViewer struct {
-	_data [32]byte
+	_data [24]byte
 }
 
 func NewDataRequestViewer(reader *karmem.Reader, offset uint32) (v *DataRequestViewer) {
-	if !reader.IsValidOffset(offset, 32) {
+	if !reader.IsValidOffset(offset, 24) {
 		return (*DataRequestViewer)(unsafe.Pointer(&_Null))
 	}
 	v = (*DataRequestViewer)(unsafe.Add(reader.Pointer, offset))
@@ -198,42 +160,30 @@ func NewDataRequestViewer(reader *karmem.Reader, offset uint32) (v *DataRequestV
 }
 
 func (x *DataRequestViewer) size() uint32 {
-	return 32
+	return 24
 }
-func (x *DataRequestViewer) S(reader *karmem.Reader) (v string) {
+func (x *DataRequestViewer) Numbers(reader *karmem.Reader) (v []int32) {
 	offset := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 0))
 	size := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 0+4))
 	if !reader.IsValidOffset(offset, size) {
-		return ""
+		return []int32{}
 	}
-	length := uintptr(size / 1)
+	length := uintptr(size / 4)
 	slice := [3]uintptr{
 		uintptr(unsafe.Add(reader.Pointer, offset)), length, length,
 	}
-	return *(*string)(unsafe.Pointer(&slice))
+	return *(*[]int32)(unsafe.Pointer(&slice))
 }
-func (x *DataRequestViewer) F64s(reader *karmem.Reader) (v []float64) {
-	offset := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 12))
-	size := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 12+4))
-	if !reader.IsValidOffset(offset, size) {
-		return []float64{}
-	}
-	length := uintptr(size / 8)
-	slice := [3]uintptr{
-		uintptr(unsafe.Add(reader.Pointer, offset)), length, length,
-	}
-	return *(*[]float64)(unsafe.Pointer(&slice))
-}
-func (x *DataRequestViewer) I32() (v int32) {
-	return *(*int32)(unsafe.Add(unsafe.Pointer(&x._data), 24))
+func (x *DataRequestViewer) K() (v int32) {
+	return *(*int32)(unsafe.Add(unsafe.Pointer(&x._data), 12))
 }
 
 type DataResponseViewer struct {
-	_data [32]byte
+	_data [16]byte
 }
 
 func NewDataResponseViewer(reader *karmem.Reader, offset uint32) (v *DataResponseViewer) {
-	if !reader.IsValidOffset(offset, 32) {
+	if !reader.IsValidOffset(offset, 16) {
 		return (*DataResponseViewer)(unsafe.Pointer(&_Null))
 	}
 	v = (*DataResponseViewer)(unsafe.Add(reader.Pointer, offset))
@@ -241,32 +191,17 @@ func NewDataResponseViewer(reader *karmem.Reader, offset uint32) (v *DataRespons
 }
 
 func (x *DataResponseViewer) size() uint32 {
-	return 32
+	return 16
 }
-func (x *DataResponseViewer) S(reader *karmem.Reader) (v string) {
+func (x *DataResponseViewer) NumbersGreaterK(reader *karmem.Reader) (v []int32) {
 	offset := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 0))
 	size := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 0+4))
 	if !reader.IsValidOffset(offset, size) {
-		return ""
+		return []int32{}
 	}
-	length := uintptr(size / 1)
+	length := uintptr(size / 4)
 	slice := [3]uintptr{
 		uintptr(unsafe.Add(reader.Pointer, offset)), length, length,
 	}
-	return *(*string)(unsafe.Pointer(&slice))
-}
-func (x *DataResponseViewer) F64s(reader *karmem.Reader) (v []float64) {
-	offset := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 12))
-	size := *(*uint32)(unsafe.Add(unsafe.Pointer(&x._data), 12+4))
-	if !reader.IsValidOffset(offset, size) {
-		return []float64{}
-	}
-	length := uintptr(size / 8)
-	slice := [3]uintptr{
-		uintptr(unsafe.Add(reader.Pointer, offset)), length, length,
-	}
-	return *(*[]float64)(unsafe.Pointer(&slice))
-}
-func (x *DataResponseViewer) I32() (v int32) {
-	return *(*int32)(unsafe.Add(unsafe.Pointer(&x._data), 24))
+	return *(*[]int32)(unsafe.Pointer(&slice))
 }

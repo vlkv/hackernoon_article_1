@@ -33,10 +33,10 @@ func main() {
 	}
 
 	req := v1.DataRequest{
-		S:    "foobar",
-		F64s: []float64{1, 2, 3, 5},
-		I32:  42,
+		Numbers: []int32{10, 43, 13, 24, 56, 16},
+		K: 42,
 	}
+	fmt.Printf("Numbers=%v, K=%v\n", req.Numbers, req.K)
 	writer := karmem.NewWriter(20 * 1024)
 	if _, err := req.WriteAsRoot(writer); err != nil {
 		panic(err)
@@ -64,12 +64,10 @@ func main() {
 
 	respPtr, respLen := splitPtrSize(uint64(respPtrLen.(int64)))
 
-	fmt.Printf("respPtr=%d, respLen=%d\n", respPtr, respLen)
-
 	resp := new(v1.DataResponse)
 	resp.ReadAsRoot(karmem.NewReader(mem.UnsafeData(store)[int32(respPtr) : int32(respPtr)+int32(respLen)]))
 
-	fmt.Printf("resp=%v\n", resp)
+	fmt.Printf("NumbersGreaterK=%v\n", resp.NumbersGreaterK)
 
 	free.Call(store, respPtr) // This memory was allocated on the guest side. Host should free it after a while
 
