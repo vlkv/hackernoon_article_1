@@ -297,9 +297,18 @@ It takes a 64-bit integer and writes the 32-bits of the `ptr` variable to the hi
 
 One very important thing in this part of the article is that the memory buffer that was **allocated by the guest** for
 the `DataResponse` result should be **deallocated by the host** at some point in time when it will be not needed
-anymore. How this is implemented in code will be seen right in the next paragraph.
+anymore. How this is implemented in code will be seen right in the next paragraph. The reasoning behind this way of
+managing memory is that Wasm module (compiled by TinyGo) has it's own GC onboard. If we simply return the address of the
+byte buffer that returned Karmem to us (the `respBytes` variable), there is no guarantee that GC will not collect this
+memory after the `ProcessRequest` function completes. And this could be fatal if garbage collection of that memory will
+happen before the host will use the response.
 
-After the guest application is 
+After all the sources of the guest application is in their place, we can call the TinyGo compiler and build the Wasm module with a command:
+```sh
+hackernoon_article_1/guest$ tinygo build -target=wasi -o guest.wasm .
+```
+
+This should produce a `hackernoon_article_1/guest/guest.wasm` binary file which is used by the host application.
 
 ## Accept the result on the host side
 
@@ -378,6 +387,6 @@ As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` an
 `NumbersGreaterK=[43 56]` with two integers which are larger than the given `K` in the input `Numners` array. This is
 exactly what we wanted from the guest to do!
 
-## CONCLUSION
+## Conclusion
 It is not that hard, but has some difficulties. Every detail was clearly explained. I hope this article will help
 somebody.
