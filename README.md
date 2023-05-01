@@ -350,25 +350,25 @@ Which should do the following:
 
 Here is the output on my machine:
 ```
-hackernoon_article_1$ make
+vitvlkv@littlepea:~/hackernoon_article_1$ make
 cd ./host && make
-make[1]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/host'
+make[1]: Entering directory '/home/vitvlkv/hackernoon_article_1/host'
 cd ../api && make
-make[2]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+make[2]: Entering directory '/home/vitvlkv/hackernoon_article_1/api'
 go run karmem.org/cmd/karmem build --golang -o "v1" api.km
-make[2]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+make[2]: Leaving directory '/home/vitvlkv/hackernoon_article_1/api'
 cd ../guest && make
-make[2]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/guest'
+make[2]: Entering directory '/home/vitvlkv/hackernoon_article_1/guest'
 cd ../api && make
-make[3]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+make[3]: Entering directory '/home/vitvlkv/hackernoon_article_1/api'
 make[3]: Nothing to be done for 'all'.
-make[3]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+make[3]: Leaving directory '/home/vitvlkv/hackernoon_article_1/api'
 tinygo build -target=wasi -o guest.wasm .
-make[2]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/guest'
+make[2]: Leaving directory '/home/vitvlkv/hackernoon_article_1/guest'
 WASMTIME_BACKTRACE_DETAILS=1 go run .
 Numbers=[10 43 13 24 56 16], K=42
 NumbersGreaterK=[43 56]
-make[1]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/host'
+make[1]: Leaving directory '/home/vitvlkv/hackernoon_article_1/host'
 ```
 
 As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` and integer `K=42` and received back array
