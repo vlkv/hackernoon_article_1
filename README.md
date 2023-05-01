@@ -1,3 +1,5 @@
+# Passing and returning arrays to and from Go WebAssembly module
+
 ## INTRO
 WebAssembly is cool. It has a lot of cool features, it is multiplatform, it can work in browser and on servers, etc.
 
