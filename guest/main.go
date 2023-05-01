@@ -28,7 +28,7 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 	ptrResp := Malloc(respBytesLen)
 	respBuf := getBytes(ptrResp)
 	copy(respBuf, respBytes)
-	return packPtrAndSize(ptrResp, respBytesLen) // NOTE: That host should free this memory in the end
+	return packPtrAndSize(ptrResp, respBytesLen) // NOTE: It is the host's responsibility to free this memory!
 }
 
 func doProcessRequest(req *v1.DataRequest) *v1.DataResponse {

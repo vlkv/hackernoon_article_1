@@ -100,7 +100,7 @@ of our guest application. According to the description of our general approach, 
 - deallocate (free) previously allocated memory buffer from the host side (both buffers will be deallocated from the
  host side).
 
-Thus all we need here is a pair of functions: `Malloc` and `Free` (which are very similar to those used in the C
+Thus all we need here is a pair of functions: `Malloc` and `Free` [^3] (which are very similar to those used in the C
 language) exported by the guest application. Here is the `Malloc` function:
 ```go
 var allocatedBytes = map[uintptr][]byte{}
@@ -142,6 +142,13 @@ memory management module of the guest application.
 All this memory management code along with the rest of the guest application code will be compiled into Wasm
 instructions with TinyGo compiler. The exact command will be presented a little bit later in this article.
 
+[^3] When TinyGo compiles Go sources into Wasm module it automatically adds some own implementations of `malloc` and
+`free` functions to the exports list (they could be observed if you inspect the Wasm module with some corresponding
+tool, like [wasmer inspect](https://docs.wasmer.io/ecosystem/wasmer/usage#wasmer-inspect)). We do not use them by two
+reasons: 1) TinyGo promises nothing about stability of exported `malloc` and `free` 2) we have to call `Malloc` for
+storing the result somehow from the guest side, it is unclear how to call standard `malloc` but very straightforward
+with our own custom `Malloc`.
+
 
 ## Prepare request and pass it from host to guest
 
@@ -157,13 +164,13 @@ if err != nil {
 
 The `newWasmInstance` does all the initialization needed according to the Wasmtime [Getting started documentation](https://docs.wasmtime.dev/lang-go.html#getting-started-and-simple-example) and returns references to the Wasm VM instance as well as it's store and linear memory.
 
-Next, we get references to the three exported guest functions that we need:
+Next, we get references to the three exported guest function objects that we will need:
 ```go
 malloc := instance.GetFunc(store, "Malloc")
 free := instance.GetFunc(store, "Free")
 processRequest := instance.GetFunc(store, "ProcessRequest")
 ```
-They are memory management `Malloc` and `Free` functions (those discussed in the previous paragraph) and the
+They are the memory management `Malloc` and `Free` functions (those discussed in the previous paragraph) and the
 `ProcessRequest` function which is the guest's function which implements the guest's API. Conceptually `ProcessRequest`
 accepts an instance of a `DataRequest` struct type and returns an instance of a `DataResponse` struct type. But in fact,
 it accepts two 32-bit integers and returns one 64-bit integer. Here is it's signature as declared in the guest's sources:
@@ -194,7 +201,7 @@ if err != nil {
 
 int32PtrReq := ptrReq.(int32)
 copy(
-    mem.UnsafeData(store)[int32PtrReq:int32PtrReq+reqBytesLen],
+    mem.UnsafeData(store)[int32PtrReq : int32PtrReq+reqBytesLen],
     reqBytes,
 )
 
@@ -205,7 +212,7 @@ if err != nil {
 
 free.Call(store, int32PtrReq)
 
-// `respPtrLen` points to the `DataResponse`, we will use it in the next steps
+// `respPtrLen` points to the `DataResponse`, we will use it in the next steps. TO BE CONTINUED...
 ```
 Here we call `Malloc` function that allocates the memory buffer of the exact size to fit the `reqBytes` data, copy that
 bytes data to the buffer and call the `ProcessRequest` function. Right after that we call `Free` on the allocated memory
@@ -231,52 +238,145 @@ Here is the full source code of the host's
 
 ## The rest of the guest application implementation
 
-Our guest application will export the...
+So far so good, we have sent the address to the `DataRequest` serialized bytes and number of those bytes to the guest.
+Let's see how guest handles this data:
 
-## GENERAL APPROACH IN DETAIL
-* PART I: HOW TO PASS THE DATA IN. Create instance of DataRequest type, serialize it into array of bytes. Call guest's
-  `Malloc` function to allocate exact number of bytes. Copy bytes form host's array to just allocated guest's array.
-  Take address of the guest's array. Pass to `ProcessRequest` two numbers: address of the array and length of the array.
-  After the `ProcessRequest` returns result, call `Free` on the guest's byte array with serialized request data.
+```go
+//go:export ProcessRequest
+func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
+    reader := karmem.NewReader(getBytes(reqPtr))
+    req := new(v1.DataRequest)
+    req.ReadAsRoot(reader)
 
-* PART II: On the guest side. Take the address and length and deserialize the request into the `DataRequest` object.
-  Then process request somehow (according to some business logic of guest application) and construct the `DataResponse`
-  object.
+    resp := doProcessRequest(req)
 
-* PART III: HOW TO PASS THE DATA OUT. To send the `DataResponse` object back to host we should first serialize it to
-  array of bytes. Then, the first intention could be to return to the host the address of this array + it's length. But
-  this would be bad idea. Because this byte array is managed by guest's GC, so it could be deallocated at any time. That
-  is why, instead, we should on the guest side call `Malloc` to allocate additional byte array and copy all the data
-  there. Then it would be safe to return to the host the address of that second array and it's length. But this is not
-  the end of the story, we have two issues here:
-  - If we return a tuple of two integers from `ProcessRequest` then, after compilation to Wasm the signature looks very
-    weird. Obviously this is some kind of a mechanism which TinyGo/Wasm uses to return tuples. But I could not find out
-    how to properly use that mechanism. So, instead of returning two int32 numbers, we return single int64 with
-    32 higher bits containing the address of the resulting byte array and 32 lower bits - containing the length of that
-    array
-  - After we deserialize `ProcessRequest` result we should deallocate the memory which is occupied by the resulting
-    byte array. Because nor guest's nor host's GC will not collect it. So it is the hosts's responsibility to call
-    `Free` on the resulting byte array.
+    writer := karmem.NewWriter(4 * 1024)
+    if _, err := resp.WriteAsRoot(writer); err != nil {
+        panic(err)
+    }
+    respBytes := writer.Bytes()
+    respBytesLen := uint32(len(respBytes))
+    ptrResp := Malloc(respBytesLen)
+    respBuf := getBytes(ptrResp)
+    copy(respBuf, respBytes)
+    return packPtrAndSize(ptrResp, respBytesLen) // NOTE: It is the host's responsibility to free this memory!
+}
+```
 
-* As could be seen we additionally needed:
-  - Own implementation of `Malloc` and `Free` functions on the guest side.
-  - Some helper functions for packing/unpacking int64 to pair of int32 and vice versa.
+First, guest asks it's memory management "subsystem" to find a corresponding `[]bytes` array by calling
+`getBytes(reqPtr)` function. Second, Karmem library is used to deserialize the `DataRequest` struct instance and as a
+result the `req` variable references to it. After that the `doProcessRequest` function is called which contains all the
+"business logic" of our guest application. Here it is (it is trivial, but the main point here is that it produces an
+instance of a `DataResponse` struct):
+```go
+func doProcessRequest(req *v1.DataRequest) *v1.DataResponse {
+    result := make([]int32, 0)
+    for _, number := range req.Numbers {
+        if number > req.K {
+            result = append(result, number)
+        }
+    }
+    resp := v1.DataResponse{
+        NumbersGreaterK: result,
+    }
+    return &resp
+}
+```
 
-## WALK THROUGH THE CODE STEP BY STEP
+In the end of the `ProcessRequest` function some interesting things happen. We take the `respBytes`, call the `Malloc` function to allocate the memory buffer (which is Wasm's linear memory, but host also is perfectly able to read from it) and copy the `DataResponse` serialized (with Karmem) bytes data into that buffer. Then, we call the `packPtrAndSize` function that "joins" two 32-bit integers into one 64-bit integer and return it to the host.
 
-### Guest's Malloc and Free implementations
+The implementation of the `packPtrAndSize` has some bit manipulation:
+```go
+func packPtrAndSize(ptr uintptr, size uint32) (ptrAndSize uint64) {
+    return uint64(ptr)<<uint64(32) | uint64(size)
+}
+```
 
-### Guest's API with Karmem
+It takes a 64-bit integer and writes the 32-bits of the `ptr` variable to the high bits of it. It also writes the
+32-bits of the `size` variable to the lower bits of the 64-bit integer. Then returns the 64-bit integer as a result.
 
-### Pass the RequestData into Wasm
+One very important thing in this part of the article is that the memory buffer that was **allocated by the guest** for
+the `DataResponse` result should be **deallocated by the host** at some point in time when it will be not needed
+anymore. How this is implemented in code will be seen right in the next paragraph.
 
-### Deserialize and process the DataRequest
+After the guest application is 
 
-### Pass the ResponseData out from Wasm
+## Accept the result on the host side
 
-## NOTES ABOUT HOW TO RUN THE EXAMPLE
-See the complete sources in my GitHub repo. Install TinyGo, Go and make. Run `make` in the repo root, this should build
-and run everything. See results in the console. Cool!
+Let's look what happens on the host side right after the `ProcessRequest` function call:
+
+```go
+// `respPtrLen` points to the `DataResponse`, we will use it in the next steps. TO BE CONTINUED...
+respPtr, respLen := unpackPtrAndSize(uint64(respPtrLen.(int64)))
+
+resp := new(v1.DataResponse)
+respBytes := mem.UnsafeData(store)[int32(respPtr) : int32(respPtr)+int32(respLen)]
+resp.ReadAsRoot(karmem.NewReader(respBytes))
+
+fmt.Printf("NumbersGreaterK=%v\n", resp.NumbersGreaterK)
+
+free.Call(store, respPtr) // This memory was allocated on the guest side, we free it on the host side here
+```
+
+The resulting 64-bit variable `respPtrLen` is being "unpacked" into two 32-bit integers which are the address of the
+memory buffer and the size of that buffer. The `unpackPtrAndSize` function that does the opposite thing that was made by `packPtrAndSize`:
+```go
+func unpackPtrAndSize(ptrSize uint64) (ptr uintptr, size uint32) {
+    ptr = uintptr(ptrSize >> 32)
+    size = uint32(ptrSize)
+    return
+}
+```
+
+Tnen, we call Karmem to deserialize the bytes in the resulting buffer into the `DataResponse` struct instance `resp` and
+use the data from there (in our example this usage is a simple printing of the `resp.NumbersGreaterK` to the standard
+output). After we used the resulting data we call `Free` on the `respPtr` because it is the host's responsibility to
+free that memory buffer which was allocated by the guest code on the guest side. End of the story!
+
+
+## How to run the complete example
+The complete sources of the example discussed in this article is in my GitHub [repo](https://github.com/vlkv/hackernoon_article_1/tree/master). What you need to do as a prerequisite is:
+- Install the latest Go (I used `go version go1.19.5 linux/amd64`) according to their official [instructions](https://go.dev/doc/install).
+- Install the latest TinyGo (I used `tinygo version 0.27.0 linux/amd64 (using go version go1.19.5 and LLVM version
+  15.0.0)`) according to their official [instructions](https://tinygo.org/getting-started/install/). Make sure you have
+  `tinygo` executable in your `PATH`.
+
+I have created a bunch of `Makefile`s in the git repo, so theoretically all you have to do is to execute:
+```sh
+hackernoon_article_1$ make
+```
+
+Which should do the following:
+- generate the Karmem serialization/deserialization code from the api.km definitions
+- call the tinygo compiler and build the guest.wasm Wasm module
+- run the host Go application
+
+Here is the output on my machine:
+```
+hackernoon_article_1$ make
+cd ./host && make
+make[1]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/host'
+cd ../api && make
+make[2]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+go run karmem.org/cmd/karmem build --golang -o "v1" api.km
+make[2]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+cd ../guest && make
+make[2]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/guest'
+cd ../api && make
+make[3]: Entering directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+make[3]: Nothing to be done for 'all'.
+make[3]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/api'
+tinygo build -target=wasi -o guest.wasm .
+make[2]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/guest'
+WASMTIME_BACKTRACE_DETAILS=1 go run .
+Numbers=[10 43 13 24 56 16], K=42
+NumbersGreaterK=[43 56]
+make[1]: Leaving directory '/home/vitvlkv/tp/backend/indicators/hackernoon_article_1/host'
+```
+
+As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` and integer `K=42` and received back array
+`NumbersGreaterK=[43 56]` with two integers which are larger than the given `K` in the input `Numners` array. This is
+exactly what we wanted from the guest to do!
 
 ## CONCLUSION
 It is not that hard, but has some difficulties. Every detail was clearly explained. I hope this article will help

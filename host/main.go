@@ -46,7 +46,7 @@ func main() {
 
 	int32PtrReq := ptrReq.(int32)
 	copy(
-		mem.UnsafeData(store)[int32PtrReq:int32PtrReq+reqBytesLen],
+		mem.UnsafeData(store)[int32PtrReq : int32PtrReq+reqBytesLen],
 		reqBytes,
 	)
 
@@ -57,19 +57,20 @@ func main() {
 
 	free.Call(store, int32PtrReq)
 
-	respPtr, respLen := splitPtrSize(uint64(respPtrLen.(int64)))
+	respPtr, respLen := unpackPtrAndSize(uint64(respPtrLen.(int64)))
 
 	resp := new(v1.DataResponse)
-	resp.ReadAsRoot(karmem.NewReader(mem.UnsafeData(store)[int32(respPtr) : int32(respPtr)+int32(respLen)]))
+	respBytes := mem.UnsafeData(store)[int32(respPtr) : int32(respPtr)+int32(respLen)]
+	resp.ReadAsRoot(karmem.NewReader(respBytes))
 
 	fmt.Printf("NumbersGreaterK=%v\n", resp.NumbersGreaterK)
 
-	free.Call(store, respPtr) // This memory was allocated on the guest side, we free it on the host side now
+	free.Call(store, respPtr) // This memory was allocated on the guest side, we free it on the host side here
 
 	runtime.KeepAlive(mem)
 }
 
-func splitPtrSize(ptrSize uint64) (ptr uintptr, size uint32) {
+func unpackPtrAndSize(ptrSize uint64) (ptr uintptr, size uint32) {
 	ptr = uintptr(ptrSize >> 32)
 	size = uint32(ptrSize)
 	return

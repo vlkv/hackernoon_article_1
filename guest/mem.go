@@ -29,6 +29,6 @@ func getBytes(ptr uintptr) []byte {
 	return allocatedBytes[ptr]
 }
 
-func packPtrAndSize(ptr uintptr, size uint32) (ptrSize uint64) {
+func packPtrAndSize(ptr uintptr, size uint32) (ptrAndSize uint64) {
 	return uint64(ptr)<<uint64(32) | uint64(size)
 }
