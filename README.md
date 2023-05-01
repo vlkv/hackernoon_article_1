@@ -16,6 +16,14 @@ box", some have not. It is also not a trivial task to choose serialization forma
 passed bytes. In the end, when it comes to writing the exact code that correctly works and could be safely deployed to
 production... things may become a little bit complicated at least.
 
+This problem is exacerbated by the fact that the information that could be found in the Internet (on official Wasm
+resources, in the documentation of various Wasm runtimes, software engineer's blogs etc.) about this task is vague
+and/or uncomplete. For example, some recipies could be found for Rust or JavaScript, but not all of them are applicable
+to Go (on which we focus here). In other cases somewhere we may find an example of how to pass into the Wasm module a
+string (or array data) but there are no good examples about how to return similar string out from Wasm. Also, there are
+some examples that illustrate the principles but miss the proper memory management which makes such examples useless and
+not production ready.
+
 In this article we will walk through the solution of the task described above. We cannot cover all the diversity of
 languages and Wasm runtimes, so focus on just a few. We will write our guest application in Go, compile it to Wasm with
 [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
@@ -30,23 +38,44 @@ TinyGo, because TinyGo does not support reflection. People who need to use JSON 
 [gson](https://github.com/tidwall/gjson) library. [tinyjson](https://github.com/CosmWasm/tinyjson) seems to be a good
 alternative for cases where the schema of all JSON messages is known. For this article I was looking for something like [Protobuf](https://protobuf.dev) but unfortunately, their Go's implementation does not work with TinyGo. Karmem is very close to Protobuf conceptually, that is why I decided to use it.
 
+## Schema of the guest's API
+Our guest application will accept complex objects of `DataRequest` type, which in Karmem language could be described as
+this:
+```
+struct DataRequest inline {
+    Numbers []int32;
+    K int32;
+}
+```
+It has array of integers `Numbers` and a number `K`. Our guest application will do very simple following business logic: return only those numbers which are greater than the given `K` number. So, our guest application will return objects of
+`DataResponse` type:
+```
+struct DataResponse inline {
+    NumbersGreaterK []int32;
+}
+```
 
-## MOTIVATION
-The information in official Wasm resources are fuzzy and obscure (TODO: enumerate them). There are some recipies for
-Rust (e.g. bindgen) or JavaScript, but not all of them are applicable to Go. Or somewhere we may find an example of how
-to pass into the Wasm module string (or array) data but there is no good examples about how to return similar string out
-from Wasm. Or, there are some examples that illustrate the principles but have errors in memory management which makes
-such an examples useless and not production ready. Also, most of the examples focus on passing in/out strings, which is
-cool. But in real life usecases we usually need something like string+JSON, or Protobuf or Flatbuffers or similar thing.
-The problem with those libraries is that not much of them work in TinyGo/Wasm, so finding a good practical solution
-could really become a huge problem.
+These datatype definitions are located in the [api.km](https://github.com/vlkv/hackernoon_article_1/blob/master/api/api.km) file. We need to call Karmem code generator with a command:
+```sh
+hackernoon_article_1/api$ go run karmem.org/cmd/karmem build --golang -o "v1" api.km
+```
 
-## TERMINOLOGY (git repo layout?)
-* host - Go application which runs guest application as Wasm embedded process using Wasmtime VM runtime.
-* guest - Go application which is compiled to Wasm binary with TinyGo. It exports one function `ProcessRequest` which
-  accepts an instance of request and returns an instance of response.
-* api - contains api.km file which is a Karmem schema for request and response types of `ProcessRequest` guest's
-  function.
+This command generates for us a file `api/v1/api_generated.go` which contains Go code for serialization and
+deserialization of `DataRequest` and `DataResponse` struct types. Karmem has very intuitive API, for example, here is a piece of code that creates a `DataRequest` and serializes it to `[]byte`:
+```go
+  req := v1.DataRequest{
+		Numbers: []int32{10, 43, 13, 24, 56, 16},
+		K: 42,
+	}
+	writer := karmem.NewWriter(20 * 1024)
+	if _, err := req.WriteAsRoot(writer); err != nil {
+		panic(err)
+	}
+	reqBytes := writer.Bytes()
+```
+
+Deserialization could be accomplished in a similar (mirrored) manner.
+
 
 ## GENERAL APPROACH IN DETAIL
 * PART I: HOW TO PASS THE DATA IN. Create instance of DataRequest type, serialize it into array of bytes. Call guest's
