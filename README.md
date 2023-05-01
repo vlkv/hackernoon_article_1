@@ -63,18 +63,35 @@ hackernoon_article_1/api$ go run karmem.org/cmd/karmem build --golang -o "v1" ap
 This command generates for us a file `api/v1/api_generated.go` which contains Go code for serialization and
 deserialization of `DataRequest` and `DataResponse` struct types. Karmem has very intuitive API, for example, here is a piece of code that creates a `DataRequest` and serializes it to `[]byte`:
 ```go
-  req := v1.DataRequest{
-		Numbers: []int32{10, 43, 13, 24, 56, 16},
-		K: 42,
-	}
-	writer := karmem.NewWriter(20 * 1024)
-	if _, err := req.WriteAsRoot(writer); err != nil {
-		panic(err)
-	}
-	reqBytes := writer.Bytes()
+import "api/v1"
+
+req := v1.DataRequest{
+    Numbers: []int32{10, 43, 13, 24, 56, 16},
+    K: 42,
+}
+writer := karmem.NewWriter(4 * 1024)
+if _, err := req.WriteAsRoot(writer); err != nil {
+	panic(err)
+}
+reqBytes := writer.Bytes()
 ```
 
-Deserialization could be accomplished in a similar (mirrored) manner.
+Deserialization could be accomplished in a similar (mirrored) manner:
+```go
+import "api/v1"
+
+reader := karmem.NewReader(reqBytes)
+req := new(v1.DataRequest)
+req.ReadAsRoot(reader)
+```
+
+Now we are able to convert our requests and responses to and from arrays of bytes. Let's proceed to the next steps.
+
+
+## Memory management on the guest side
+
+Before we start to pass `[]byte` data into the Wasm module, let's dive into some details of memory management of our
+guest application.
 
 
 ## GENERAL APPROACH IN DETAIL

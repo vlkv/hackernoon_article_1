@@ -19,7 +19,7 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 
 	resp := doProcessRequest(req)
 
-	writer := karmem.NewWriter(20 * 1024)
+	writer := karmem.NewWriter(4 * 1024)
 	if _, err := resp.WriteAsRoot(writer); err != nil {
 		panic(err)
 	}
