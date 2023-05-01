@@ -388,5 +388,7 @@ As you can see, we passed to the guest array of `Numbers=[10 43 13 24 56 16]` an
 exactly what we wanted from the guest to do!
 
 ## Conclusion
-It is not that hard, but has some difficulties. Every detail was clearly explained. I hope this article will help
-somebody.
+
+This article proposes a solution to one common problem which WebAssembly's software engineers face very often: passing
+non-primitive datatypes to and from Wasm module. WebAssembly has a steep learning curve but it also has a great
+potential as a technology. I hope this article will help somebody in their work or personal project.
