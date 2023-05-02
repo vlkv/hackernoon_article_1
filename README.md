@@ -88,9 +88,9 @@ Now we are able to convert our requests and responses to and from arrays of byte
 
 Before we begin to directly pass the `[]byte` data to the Wasm module, let's look at some details of memory management
 of our guest application. According to the description of our general approach, we need to
-- allocate a buffer of guest's memory from the host side (need it to copy request's bytes there),
-- allocate a buffer of guest's memory from the guest side (need it to copy response's bytes there),
-- deallocate (free) previously allocated memory buffer from the host side (both buffers will be deallocated from the
+- allocate a buffer of guest's memory on the host side (need it to copy request's bytes there),
+- allocate a buffer of guest's memory on the guest side (need it to copy response's bytes there),
+- deallocate (free) previously allocated memory buffer on the host side (both buffers will be deallocated on the
  host side).
 
 Thus all we need here is a pair of functions: `Malloc` and `Free` [^3] (which are very similar to those used in the C
@@ -122,7 +122,7 @@ func Free(ptr uintptr) {
 }
 ```
 
-Also we have a helper function to access the allocated memory buffers from the guest side:
+Also we have a helper function to access the allocated memory buffers on the guest side:
 ```go
 func getBytes(ptr uintptr) []byte {
 	return allocatedBytes[ptr]
@@ -397,5 +397,5 @@ alternative for cases where the schema of all JSON messages is known. For this a
 `free` functions to the exports list (they could be observed if you inspect the Wasm module with some corresponding
 tool, like [wasmer inspect](https://docs.wasmer.io/ecosystem/wasmer/usage#wasmer-inspect)). We do not use them by two
 reasons: 1) TinyGo promises nothing about stability of exported `malloc` and `free` 2) we have to call `Malloc` for
-storing the result somehow from the guest side, it is unclear how to call standard `malloc` this way but very straightforward
+storing the result somehow on the guest side, it is unclear how to call standard `malloc` this way but very straightforward
 with our own custom `Malloc`.
