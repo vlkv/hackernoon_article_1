@@ -171,11 +171,11 @@ The two integers that `ProcessRequest` function accepts are:
 - `reqLen` is the size of that buffer.
 
 The resulting 64-bit integer holds bit representation of the two 32-bit integers that represent the address of the
-buffer and it's size where serialized bytes of `DataResponse` are copied to. The reason why it is single 64-bit integer
-instead of a tuple of two 32-bit integers is that it is super unclear how TinyGo treats data when function return
-complex tuple-like result. It was not documented at the moment of the writing this article (or simply I could not find
-it). So this should be considered as a workaround hack (that works wery well) to return a pair of 32-bit integers from a
-function that is exported from a Wasm module.
+buffer and it's size where serialized bytes of `DataResponse` are copied to. The reason why it is a single 64-bit
+integer instead of a tuple of two 32-bit integers is that it is super unclear how TinyGo treats data when function
+return complex tuple-like result. It was not documented at the moment of the writing this article (or simply I could not
+find it). So this should be considered as a workaround hack (that works wery well) to return a pair of 32-bit integers
+from a function that is exported from a Wasm module.
 
 ```go
 // Here `reqBytes` is a []byte array with the DataRequest serialized bytes
