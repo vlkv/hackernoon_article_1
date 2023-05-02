@@ -335,8 +335,8 @@ free that memory buffer which was allocated by the guest code on the guest side.
 The complete sources of the example discussed in this article is in my GitHub [repo](https://github.com/vlkv/hackernoon_article_1/tree/master). What you need to do as a prerequisite is:
 - Install the latest Go (I used `go version go1.19.5 linux/amd64`) according to their official [instructions](https://go.dev/doc/install).
 - Install the latest TinyGo (I used `tinygo version 0.27.0 linux/amd64 (using go version go1.19.5 and LLVM version
-  15.0.0)`) according to their official [instructions](https://tinygo.org/getting-started/install/). Make sure you have
-  `tinygo` executable in your `PATH`.
+  15.0.0)`) according to their official [instructions](https://tinygo.org/getting-started/install/).
+- Make sure you have both `go` and `tinygo` executables in your `PATH`.
 
 I have created a bunch of `Makefile`s in the git repo, so theoretically all you have to do is to execute:
 ```sh
