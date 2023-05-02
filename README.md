@@ -345,7 +345,7 @@ hackernoon_article_1$ make
 
 Which should do the following:
 - generate the Karmem serialization/deserialization code from the [api.km](https://github.com/vlkv/hackernoon_article_1/blob/master/api/api.km) definitions
-- call the tinygo compiler and build the guest.wasm Wasm module
+- call the TinyGo compiler and build the guest.wasm Wasm module
 - run the host Go application
 
 Here is the output on my machine:
