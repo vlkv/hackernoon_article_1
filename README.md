@@ -1,7 +1,7 @@
 # Passing and returning arrays to and from Go WebAssembly module
 
 [WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, has
-near native perfomance, it can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is
+near native performance, it can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is
 rather young, some basic tasks are not as easy as they expected to be especially for the newcomers. One of such
 surprisingly difficult tasks is passing and returning to and from WebAssembly module any complex objects, because it is
 well known, that Wasm supports only primitive datatypes (int32, int64, float32 and float64). In fact, passing any
