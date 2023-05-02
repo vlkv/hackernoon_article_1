@@ -1,4 +1,4 @@
-# Passing and returning arrays to and from Go WebAssembly module
+# Passing and returning structured datatypes to and from Go WebAssembly module
 
 [WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, has
 near native performance, it can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is
@@ -280,7 +280,7 @@ func packPtrAndSize(ptr uintptr, size uint32) (ptrAndSize uint64) {
 ```
 
 It takes a 64-bit integer and writes the 32-bits of the `ptr` variable to the high bits of it. It also writes the
-32-bits of the `size` variable to the low bits of the 64-bit integer. Then returns the 64-bit integer as a result.
+32-bits of the `size` variable to the low bits of the 64-bit integer. Then returns the 64-bit integer as a result. The full source code of the guest's `main.go` module could be found [here](https://github.com/vlkv/hackernoon_article_1/blob/master/guest/main.go).
 
 One very important thing in this part of the article is that the memory buffer that was **allocated by the guest** for
 the `DataResponse` result should be **deallocated by the host** at some point in time when it will be not needed
