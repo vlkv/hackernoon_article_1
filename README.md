@@ -1,6 +1,6 @@
 # Passing and returning structured datatypes to and from Go WebAssembly module
 
-[WebAssembly](https://webassembly.org/) is a remarkable technology with numerous attractive features. It is
+[WebAssembly](https://webassembly.org/) (Wasm) is a remarkable technology with numerous attractive features. It is
 multiplatform, offers near-native performance, and can be used both in browsers and on the server-side. However, due to
 its relative youth, certain basic tasks can be more challenging than expected, particularly for newcomers. One such
 unexpectedly difficult task is passing and returning complex objects to and from WebAssembly modules. This challenge
@@ -385,9 +385,9 @@ exactly what we wanted our guest application to do!
 ## Conclusion
 
 This article proposes a solution to a common problem faced by software engineers working with WebAssembly: passing
-non-primitive datatypes to and from a Wasm module. This solution has been effectively applied at TakeProfit Inc., where
-I currently work. WebAssembly has a steep learning curve, but it also holds great potential as a technology. I hope this
-article will be helpful to someone in their work or personal projects.
+non-primitive datatypes to and from a Wasm module. This solution has been effectively applied at [TakeProfit
+Inc.](https://takeprofit.com/), where I currently work. WebAssembly has a steep learning curve, but it also holds great
+potential as a technology. I hope this article will be helpful to someone in their work or personal projects.
 
 
 ## Footnotes
