@@ -383,9 +383,10 @@ exactly what we wanted our guest application to do!
 
 ## Conclusion
 
-This article proposes a solution to one common problem which WebAssembly's software engineers face very often: passing
-non-primitive datatypes to and from Wasm module. WebAssembly has a steep learning curve but it also has a great
-potential as a technology. I hope this article will help somebody in their work or personal project.
+This article proposes a solution to a common problem faced by software engineers working with WebAssembly: passing
+non-primitive datatypes to and from a Wasm module. This solution has been effectively applied at TakeProfit Inc., where
+I currently work. WebAssembly has a steep learning curve, but it also holds great potential as a technology. I hope this
+article will be helpful to someone in their work or personal projects.
 
 
 ## Footnotes
