@@ -30,11 +30,11 @@ returning similar strings from WebAssembly is challenging. Additionally, some ex
 lack proper memory management, rendering them useless and not suitable for production.
 
 In this article we will walk through the solution of the task described above. We cannot cover all the diversity of
-languages and Wasm runtimes, so focus just on the following. We will write our guest application in Go, compile it to
-Wasm with [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
-[Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be written also
-in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library
-very similar to well-known Protobuf.
+languages and Wasm runtimes, so focus just on the following. We will write our guest application in
+[Go](https://go.dev/), compile it to Wasm with [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed
+it with [Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be
+written also in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and
+a library very similar to well-known [Protobuf](https://protobuf.dev/).
 
 
 ## API of the guest application
@@ -46,8 +46,9 @@ struct DataRequest inline {
     K int32;
 }
 ```
-It has array of integers `Numbers` and a number `K`. Our guest application will do very simple following business logic: return only those numbers which are greater than the given `K` number. So, our guest application will return objects of
-`DataResponse` type:
+The `DataRequest` type has two fields: an array of integers `Numbers` and a number `K`. Our guest application will do
+very simple following business logic: return only those numbers which are greater than the given `K` number. So, our
+guest application will return objects of `DataResponse` type:
 ```
 struct DataResponse inline {
     NumbersGreaterK []int32;
@@ -145,7 +146,7 @@ instructions with TinyGo compiler. The exact command will be presented a little 
 
 All the required preparations are done so in this paragraph we are ready to see the details of the host application
 code. We skip details of the Wasm runtime initialization, because this is not the main focus of the article. The
-initialization is encapsulated in the function `newWasmInstance` and we call it in the very begining:
+initialization is encapsulated in the function `newWasmInstance` and we call it in the very beginning:
 ```go
 instance, store, mem, err := newWasmInstance("../guest/guest.wasm")
 if err != nil {
@@ -172,14 +173,14 @@ func ProcessRequest(reqPtr uintptr, reqLen uint32) uint64 {
 }
 ```
 The two integers that `ProcessRequest` function accepts are:
-- `reqPtr` is the address to the begining of the memory buffer where the serialized `DataRequest` bytes are copied to
+- `reqPtr` is the address to the beginning of the memory buffer where the serialized `DataRequest` bytes are copied to
 - `reqLen` is the size of that buffer.
 
 The resulting 64-bit integer holds bit representation of the two 32-bit integers that represent the address of the
 buffer and it's size where serialized bytes of `DataResponse` are copied to. The reason why it is a single 64-bit
 integer instead of a tuple of two 32-bit integers is that it is super unclear how TinyGo treats data when function
 return complex tuple-like result. It was not documented at the moment of the writing this article (or simply I could not
-find it). So this should be considered as a workaround hack (that works wery well) to return a pair of 32-bit integers
+find it). So this should be considered as a workaround hack (that works very well) to return a pair of 32-bit integers
 from a function that is exported from a Wasm module.
 
 ```go
