@@ -1,37 +1,40 @@
 # Passing and returning structured datatypes to and from Go WebAssembly module
 
-[WebAssembly](https://webassembly.org/) is a great technology and has a lot of nice features: it is multiplatform, has
-near native performance, it can work in browser and on server side, etc. But (maybe) due to the fact that WebAssembly is
-rather young, some basic tasks are not as easy as they expected to be especially for the newcomers. One of such
-surprisingly difficult tasks is passing and returning to and from WebAssembly module any complex objects, because it is
-well known, that Wasm supports only primitive datatypes (int32, int64, float32 and float64). In fact, passing any
-complex objects like arrays, strings, structs with named fields all could be reduced to one single problem of passing
-arrays of bytes and applying some serialization/deserialization algorithm to the data.
+[WebAssembly](https://webassembly.org/) is a remarkable technology with numerous attractive features. It is
+multiplatform, offers near-native performance, and can be used both in browsers and on the server-side. However, due to
+its relative youth, certain basic tasks can be more challenging than expected, particularly for newcomers. One such
+unexpectedly difficult task is passing and returning complex objects to and from WebAssembly modules. This challenge
+arises because WebAssembly only supports primitive datatypes such as int32, int64, float32, and float64. Consequently,
+passing complex objects like arrays, strings, and structs with named fields ultimately boils down to the problem of
+passing arrays of bytes and applying serialization/deserialization algorithms to the data.
 
-The general approach to accomplish this is intuitively quite simple - allocate some memory on the guest side (the Wasm
-module side) and copy request's data from the host to that memory buffer. Then pass the pointer to that memory + buffer
-size to the guest, process the data on the guest side according to the guest's business logic and produce some result.
-Then allocate some memory for the result, copy result's bytes into that buffer and return similar pair (pointer + buffer
-size) from the Wasm module to the host. Finally don't forget to correctly free all previously allocated memory buffers.
-When we start thinking about memory management in WebAssembly, it is very dependent on what language [^1] was used for
-subsequent compilation to Wasm instructions. Some languages have garbage collector (GC) "out of the box", some have not.
-It is also not a trivial task to choose serialization format and library for interpreting the passed bytes. In the end,
-when it comes to writing the exact code that correctly works and could be safely deployed to production... things may
-become a little bit complicated at least.
+The general approach to achieve this is intuitively quite simple. First, allocate memory on the guest side (the
+Wasm module side) and copy the request's data from the host to that memory buffer. Then, pass the pointer to that
+memory along with the buffer size to the guest. The guest can process the data based on its own business logic and
+generate a result. Next, allocate memory for the result, copy the result's bytes into that buffer, and return a similar
+pair (pointer + buffer size) from the WebAssembly module to the host. Finally, it is important to remember to properly
+free all previously allocated memory buffers.
 
-This problem is exacerbated by the fact that the information that could be found in the Internet (on official Wasm
-resources, in the documentation of various Wasm runtimes, software engineer's blogs etc.) about this task is vague
-and/or uncomplete. For example, some recipies could be found for Rust or JavaScript, but not all of them are applicable
-to Go (on which we focus here). In other cases somewhere we may find an example of how to pass into the Wasm module a
-string (or array data) but there are no good examples about how to return similar string out from Wasm. Also, there are
-some examples that illustrate the principles but miss the proper memory management which makes such examples useless and
-not production ready.
+When it comes to memory management in WebAssembly, it heavily depends on the language [^1] used for compiling to
+WebAssembly instructions. Some languages have built-in garbage collectors (GC), while others do not. Additionally,
+selecting a serialization format and library to interpret the passed bytes is not a trivial task. Ultimately, when it
+comes to writing the actual code that works correctly and can be safely deployed to production, things can become
+somewhat complicated, to say the least.
+
+This problem is exacerbated by the lack of comprehensive and clear information available on the Internet. Despite
+official WebAssembly resources, documentation from various WebAssembly runtimes, and software engineers' blogs, the
+information regarding this task is often vague or incomplete. For instance, while there are some recipes available for
+Rust or JavaScript, not all of them are applicable to Go (which is the focus in this article). In other cases, we may
+come across examples of how to pass a string or array data into the WebAssembly module, but finding good examples of
+returning similar strings from WebAssembly is challenging. Additionally, some examples illustrate the principles but
+lack proper memory management, rendering them useless and not suitable for production.
 
 In this article we will walk through the solution of the task described above. We cannot cover all the diversity of
 languages and Wasm runtimes, so focus just on the following. We will write our guest application in Go, compile it to
 Wasm with [TinyGo](https://tinygo.org/docs/guides/webassembly/) compiler and embed it with
 [Wasmtime](https://github.com/bytecodealliance/wasmtime-go) runtime into the host application which will be written also
-in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library.
+in Go. For serialization we will use [Karmem](https://github.com/inkeliz/karmem) [^2] which is a format and a library
+very similar to well-known Protobuf.
 
 
 ## API of the guest application
@@ -88,8 +91,8 @@ Now we are able to convert our requests and responses to and from arrays of byte
 
 Before we begin to directly pass the `[]byte` data to the Wasm module, let's look at some details of memory management
 of our guest application. According to the description of our general approach, we need to
-- allocate a buffer of guest's memory on the host side (need it to copy request's bytes there),
-- allocate a buffer of guest's memory on the guest side (need it to copy response's bytes there),
+- allocate a buffer of guest's memory on the host side (need to copy request's bytes there),
+- allocate a buffer of guest's memory on the guest side (need to copy response's bytes there),
 - deallocate (free) previously allocated memory buffer on the host side (both buffers will be deallocated on the
  host side).
 
@@ -110,11 +113,13 @@ func Malloc(size uint32) uintptr {
 
 Comment `//go:export Malloc` is not just a comment but a TinyGo way to mark the functions that should be exported out
 from the resulting Wasm module. The `allocatedBytes` map holds all the references to all allocated memory buffers so GC
-will not come and collect them. The only non-trivial part here could be this 'magic': `unsafePtr :=
-uintptr(unsafe.Pointer(ptr))`. This is simply a way in Go to get raw (and thus unsafe) pointer to some object. We need
-raw pointer because we should treat it like an integer number so we able to pass it to (and from) the Wasm.
+will not come and collect them until they will be freed. The only non-trivial part here could be this 'magic':
+`unsafePtr := uintptr(unsafe.Pointer(ptr))`. This is simply a way in Go to get raw (and thus unsafe) pointer to some
+object. We need raw pointer because we should treat it like an integer number so we able to pass it to (and from) the
+Wasm.
 
-Implementation of the `Free` function is trivial, it simply deletes references to previously allocated buffers from the `allocatedBytes` map:
+Implementation of the `Free` function is trivial, it simply deletes references to previously allocated buffers from the
+`allocatedBytes` map:
 ```go
 //go:export Free
 func Free(ptr uintptr) {
